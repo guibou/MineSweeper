@@ -16,15 +16,17 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
 
-  exposed-modules:     App, CSS
+  exposed-modules:     App, CSS, MineSweeper, Utils
   build-depends:       base
                      , reflex
                      , clay
                      , bytestring
                      , reflex-dom
                      , reflex-dom-core
+                     , containers
                      , jsaddle
                      , text
+                     , random-shuffle
   default-extensions:
 
   ghc-options: -Wall -Wno-partial-type-signatures -Wincomplete-uni-patterns
