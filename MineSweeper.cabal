@@ -1,0 +1,45 @@
+name:                MineSweeper
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/guibou/MineSweepers#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Guillaume Bouchard
+maintainer:          guillaum.bouchard@gmail.com
+copyright:           2018 Guillaume Bouchard
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+
+  exposed-modules:     App, CSS
+  build-depends:       base
+                     , reflex
+                     , clay
+                     , bytestring
+                     , reflex-dom
+                     , reflex-dom-core
+                     , jsaddle
+                     , text
+  default-extensions:
+
+  ghc-options: -Wall -Wno-partial-type-signatures -Wincomplete-uni-patterns
+
+  default-language:    Haskell2010
+
+-- This is the android build
+executable MineSweeper
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , MineSweeper
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/guibou/MineSweeper
