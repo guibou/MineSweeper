@@ -2,7 +2,14 @@
 module MineSweeper
   ( newGame
   , Size(..)
+  , Coord(..)
+  , FieldState
+  , Status(..)
   , play
+  , fieldSize
+  , allCells
+  , debugStatus
+  , getFieldStatus
   ) where
 
 import qualified Data.Set as Set
@@ -51,8 +58,8 @@ data Field = Field Size (Set Coord)
 data FieldState = FieldState (Set Coord) Life Field
   deriving Show
 
-data Status = Bomb | Safe Int
-  deriving Show
+data Status = Bomb | SafeArea Int
+  deriving (Show, Eq)
 
 data Life = Alive | Dead
   deriving (Show)
@@ -65,38 +72,48 @@ isVisible :: Coord -> FieldState -> Bool
 isVisible c (FieldState hidden _ _) = not $ c `Set.member` hidden
 
 
+fieldSize :: FieldState -> Size
+fieldSize (FieldState _ _ (Field size _)) = size
+
 display :: FieldState -> IO ()
-display fs@(FieldState _ _ field@(Field size _)) = do
+display fs@(FieldState _ _ field) = do
   case fieldStatus fs of
     Dead -> putStrLn "DEAD"
     _ -> pure ()
-  for_ (allCells size) $ \line -> do
+  for_ (allCells (fieldSize fs)) $ \line -> do
     for_ line $ \coord -> do
-      putStr (paren (isVisible coord fs) (charStatus coord))
+      putStr (debugStatus fs coord)
     putChar '\n'
+
+debugStatus field coord = paren visible (charStatus coord)
   where
+    (visible, status) = getFieldStatus coord field
+
     paren True c = [' ', c, ' ']
     paren False c = ['[', c, ']']
 
-    charStatus coord = case getStatus coord field of
+    charStatus coord = case status of
       Bomb -> '*'
-      Safe 0 -> '_'
-      Safe i -> head (show i)
+      SafeArea 0 -> '_'
+      SafeArea i -> head (show i)
 
 fieldStatus :: FieldState -> Life
 fieldStatus (FieldState _ life _) = life
 
+getFieldStatus :: Coord -> FieldState -> (Bool, Status)
+getFieldStatus c field@(FieldState _ _ f) = (isVisible c field, getStatus c f)
+
 getStatus :: Coord -> Field -> Status
 getStatus coord (Field _ bombs)
   | coord `Set.member` bombs = Bomb
-  | otherwise = Safe (count (`Set.member` bombs) (border coord))
+  | otherwise = SafeArea (count (`Set.member` bombs) (border coord))
       
 play :: Coord -> FieldState -> FieldState
 play c fs@(FieldState hiddens life field)
   | not $ c `Set.member` hiddens = fs
   | otherwise = case getStatus c field of
     Bomb -> newField Dead
-    Safe 0 -> foldl (flip play) (newField life) (border c)
-    Safe _ -> newField life
+    SafeArea 0 -> foldl (flip play) (newField life) (border c)
+    SafeArea _ -> newField life
   where
       newField l = FieldState (Set.delete c hiddens) l field
