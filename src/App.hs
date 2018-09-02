@@ -93,15 +93,16 @@ cell coord st' = do
   st <- holdUniqDyn st'
 
   e <- dyn . ffor st $ \status -> mdo
-    let (cls, t, e) = case status of
-          (Hidden Unknown, _) -> ("unknown", nbsp, coord <$ domEvent Click td)
-          (Hidden Flagged, _) -> ("flagged", "F", (coord <$ domEvent Click td))
-          (Visible, c) -> case c of
-            Bomb -> ("bomb", "B", never)
-            SafeArea 0 -> ("empty", nbsp, never)
-            SafeArea i -> ("safe" <> number i, number i, never)
-    (td, _) <- elClass' "td" cls (text t)
-    pure e
+    let (visibility, innerStatus) = status
+        dataStatus = case innerStatus of
+          Bomb -> mempty
+          SafeArea i -> "data-number" =: Text.pack (show i)
+        (clsVisibility, evt) = case visibility of 
+          Hidden Unknown -> ("hidden unknown", coord <$ domEvent Click td)
+          Hidden Flagged -> ("hidden flagged", (coord <$ domEvent Click td))
+          Visible -> ("visible", never)
+    (td, _) <- elClass' "td" clsVisibility $ elAttr "span" dataStatus $ text nbsp
+    pure evt
   switchHold never e
 
 mineSweeperWidget :: _ => Size -> Dynamic t FieldState -> m (Event t Coord)

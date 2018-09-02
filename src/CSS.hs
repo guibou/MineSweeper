@@ -27,6 +27,25 @@ css = (encodeUtf8 . toStrict . render) $ do
     height (pct 100)
     borderCollapse collapse
     "table-layout" -: "fixed"
+
+    td # ".flagged" ? span # ":after" ? do
+      content (stringContent "F")
+
+    td # ".visible" ? do
+      span # ":after" ? do
+        content (stringContent "B") -- No number, you are a bomb
+      span # "@data-number" # ":after" ? do
+        content (attrContent "data-number")
+      span # ("data-number" @= "0") # ":after" ? do
+        content normal
+      span # ("data-number" @= "1") ? color blue
+      span # ("data-number" @= "2") ? color green
+      span # ("data-number" @= "3") ? color red
+      span # ("data-number" @= "4") ? color orange
+      span # ("data-number" @= "5") ? color yellow
+      span # ("data-number" @= "6") ? color purple
+      span # ("data-number" @= "7") ? color pink
+      span # ("data-number" @= "8") ? color black
     td ? do
       fontFamily [] [monospace]
       borderWidth (px 1)
@@ -41,14 +60,6 @@ css = (encodeUtf8 . toStrict . render) $ do
 
       keyframes "expand" [(0, Clay.opacity 0)]
 
-    ".unknown" ? do
+    ".hidden" ? do
       backgroundColor dimgrey
 
-    ".safe1" ? color blue
-    ".safe2" ? color green
-    ".safe3" ? color red
-    ".safe4" ? color orange
-    ".safe5" ? color yellow
-    ".safe6" ? color purple
-    ".safe7" ? color pink
-    ".safe8" ? color black
