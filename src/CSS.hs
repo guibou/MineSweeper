@@ -41,7 +41,7 @@ css = (encodeUtf8 . toStrict . render) $ do
 
       keyframes "expand" [(0, Clay.opacity 0)]
 
-    ".hidden" ? do
+    ".unknown" ? do
       backgroundColor dimgrey
 
     ".safe1" ? color blue

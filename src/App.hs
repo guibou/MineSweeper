@@ -94,12 +94,12 @@ cell coord st' = do
 
   e <- dyn . ffor st $ \status -> mdo
     let (cls, t, e) = case status of
-          (Hidden, _) -> ("hidden", nbsp, coord <$ domEvent Click td)
+          (Hidden Unknown, _) -> ("unknown", nbsp, coord <$ domEvent Click td)
+          (Hidden Flagged, _) -> ("flagged", "F", (coord <$ domEvent Click td))
           (Visible, c) -> case c of
             Bomb -> ("bomb", "B", never)
             SafeArea 0 -> ("empty", nbsp, never)
             SafeArea i -> ("safe" <> number i, number i, never)
-          (Flagged, _) -> ("flagged", "F", (coord <$ domEvent Click td))
     (td, _) <- elClass' "td" cls (text t)
     pure e
   switchHold never e

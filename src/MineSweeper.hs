@@ -6,6 +6,7 @@ module MineSweeper
   , Coord(..)
   , FieldState
   , Status(..)
+  , HiddenStatus(..)
   , StatusModifier(..)
   , getGameStatus
   , play
@@ -15,7 +16,9 @@ module MineSweeper
   ) where
 
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 import Data.Set (Set)
+import Data.Map (Map)
 import Data.Foldable (for_)
 import Control.Monad (guard)
 import System.Random
@@ -58,9 +61,10 @@ universe = Set.fromList . mconcat . allCells
 data Field = Field Size (Set Coord)
   deriving Show
 
--- TODO: two set sucks
--- I need to refactor with only one Map of Visible | Hidden | Flag
-data FieldState = FieldState (Set Coord) (Set Coord) Life Field
+data HiddenStatus = Unknown | Flagged
+  deriving (Show, Eq)
+
+data FieldState = FieldState (Map Coord HiddenStatus) Life Field
   deriving Show
 
 data Status = Bomb | SafeArea Int
@@ -75,37 +79,30 @@ data MineAction = Flag | Open
 data GameStatus
   = Win
   | Lose
-  | Current Int Int Int
+  | Current Int
   deriving (Show)
 
 getGameStatus :: FieldState -> GameStatus
-getGameStatus (FieldState _ _ Dead _) = Lose
-getGameStatus (FieldState hidden flags Alive (Field _ mines))
-  | nbOpenableCases == (nbMines - nbFlags) = Win
-  | otherwise = Current (nbMines - nbFlags) nbFlags nbOpenableCases
+getGameStatus (FieldState _ Dead _) = Lose
+getGameStatus (FieldState visibility Alive (Field _ mines))
+  | nbHidden == nbMines = Win
+  | otherwise = Current nbHidden
 
   where
     nbMines = Set.size mines
-    nbFlags = Set.size flags
-    nbHidden = Set.size hidden
-
-    nbOpenableCases = nbHidden - nbFlags
+    nbHidden = Map.size visibility
 
 newGame :: Int -> Size -> Int -> FieldState
-newGame seed size mineCount = FieldState pop (Set.empty) Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
-  where pop = universe size
-
-isVisible :: Coord -> FieldState -> Bool
-isVisible c (FieldState hidden _ _ _) = not $ c `Set.member` hidden
-
-isFlagged :: Coord -> FieldState -> Bool
-isFlagged c (FieldState _ flags _ _) = c `Set.member` flags
+newGame seed size mineCount = FieldState popMap Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
+  where
+    pop = universe size
+    popMap = Map.fromSet (const Unknown) pop
 
 fieldSize :: FieldState -> Size
-fieldSize (FieldState _ _ _ (Field size _)) = size
+fieldSize (FieldState _ _ (Field size _)) = size
 
 _display :: FieldState -> IO ()
-_display fs@(FieldState _ _ _ _) = do
+_display fs@(FieldState _ _ _) = do
   case fieldStatus fs of
     Dead -> putStrLn "DEAD"
     _ -> pure ()
@@ -120,8 +117,8 @@ debugStatus field coord = paren visible charStatus
     (visible, status) = getFieldStatus coord field
 
     paren Visible c = [' ', c, ' ']
-    paren Hidden c = ['[', c, ']']
-    paren Flagged c = ['{', c, '}']
+    paren (Hidden Unknown) c = ['[', c, ']']
+    paren (Hidden Flagged) c = ['{', c, '}']
 
     charStatus = case status of
       Bomb -> '*'
@@ -129,21 +126,17 @@ debugStatus field coord = paren visible charStatus
       SafeArea i -> head (show i)
 
 fieldStatus :: FieldState -> Life
-fieldStatus (FieldState _ _ life _) = life
+fieldStatus (FieldState _ life _) = life
 
 data StatusModifier
   = Visible
-  | Flagged
-  | Hidden
+  | Hidden HiddenStatus
   deriving (Show, Eq)
 
 getFieldStatus :: Coord -> FieldState -> (StatusModifier, Status)
-getFieldStatus c field@(FieldState _ _ _ f) = (modifier, getStatus c f)
+getFieldStatus c (FieldState visibility _ f) = (modifier, getStatus c f)
   where
-    modifier
-     | isVisible c field = Visible
-     | isFlagged c field = Flagged
-     | otherwise = Hidden
+    modifier = maybe Visible Hidden (Map.lookup c visibility)
 
 getStatus :: Coord -> Field -> Status
 getStatus coord (Field _ bombs)
@@ -151,22 +144,18 @@ getStatus coord (Field _ bombs)
   | otherwise = SafeArea (count (`Set.member` bombs) (border coord))
       
 play :: (Coord, MineAction) -> FieldState -> FieldState
-play _ fs@(FieldState _ _ Dead _) = fs
-play (c, action) fs@(FieldState hiddens flags Alive field) = case action of
+play _ fs@(FieldState _ Dead _) = fs
+play (c, action) fs@(FieldState visibility Alive field) = case action of
   Open
-   | c `Set.member` flags -> fs -- cannot open if flagged
-   | not $ c `Set.member` hiddens -> fs -- already opened
+   | Just Flagged <- Map.lookup c visibility -> fs
+   | Nothing <- Map.lookup c visibility -> fs -- already opened
    | otherwise -> case getStatus c field of
      Bomb -> newField Dead
      SafeArea 0 -> foldl (\f coord -> play (coord, Open) f) (newField Alive) (border c)
      SafeArea _ -> newField Alive
    where
-       newField l = FieldState (Set.delete c hiddens) flags l field
-  Flag
-   | not $ c `Set.member` hiddens -> fs -- cannot flag if open
-   | otherwise -> FieldState hiddens (toggleInSet c flags) Alive field
-
-toggleInSet :: Ord t => t -> Set t -> Set t
-toggleInSet v set
-  | v `Set.member` set = Set.delete v set
-  | otherwise = Set.insert v set
+       newField l = FieldState (Map.delete c visibility) l field
+  Flag -> FieldState (Map.alter fAlter c visibility) Alive field
+    where fAlter Nothing = Nothing
+          fAlter (Just Unknown) = Just Flagged
+          fAlter (Just Flagged) = Just Unknown
