@@ -40,13 +40,16 @@ startByEvent _ r = r
 newGameRandom :: Size -> Int -> UTCTime -> FieldState
 newGameRandom size nbMines time = newGame (truncate $ utcTimeToPOSIXSeconds time) size nbMines
 
-header :: MonadWidget t m => Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t (), Dynamic t MineAction)
-header gameStatus timer = do
+header :: MonadWidget t m => Dynamic t FieldState -> Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t (), Dynamic t MineAction)
+header fs gameStatus timer = do
   divClass "header" $ do
     restartEvt <- elClass "span" "restart" $ button "Restart"
     divClass "timer" $ text "Time: " >> dynText (toSec <$> gameStatus <*> timer)
     divClass "mineCount" $ text "Mines: " >> text "20"
     mineAction <- flagToolbar never
+
+    text "Status: " >> display (getGameStatus <$> fs)
+
     pure (restartEvt, mineAction)
 
 flagToolbar :: MonadWidget t m => Event t () -> m (Dynamic t MineAction)
@@ -71,7 +74,7 @@ go = mainWidgetWithCss css $ mdo
                                          const NotRunning <$ restartEvt
                                        ])
 
-  (restartEvt, mineAction) <- header gameStatus timer
+  (restartEvt, mineAction) <- header game gameStatus timer
 
   let newGameEvent = newGameRandom size nbMines <$> (current timer <@ restartEvt)
 

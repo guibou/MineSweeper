@@ -8,6 +8,7 @@ module MineSweeper
   , FieldState
   , Status(..)
   , StatusModifier(..)
+  , getGameStatus
   , play
   , fieldSize
   , allCells
@@ -72,6 +73,26 @@ data Life = Alive | Dead
 
 data MineAction = Flag | Open
   deriving (Show)
+
+data GameStatus
+  = Win
+  | Lose
+  | Current Int Int Int
+  deriving (Show)
+
+getGameStatus :: FieldState -> GameStatus
+getGameStatus (FieldState _ _ Dead _) = Lose
+getGameStatus (FieldState hidden flags Alive (Field (Size x y) mines))
+  | nbOpenableCases == (nbMines - nbFlags) = Win
+  | otherwise = Current (nbMines - nbFlags) nbFlags nbOpenableCases
+
+  where
+    nbMines = Set.size mines
+    nbCases = x * y
+    nbFlags = Set.size flags
+    nbHidden = Set.size hidden
+
+    nbOpenableCases = nbHidden - nbFlags
 
 newGame :: Int -> Size -> Int -> FieldState
 newGame seed size mineCount = FieldState pop (Set.empty) Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
