@@ -16,6 +16,7 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Foldable (for_)
 import Control.Monad (guard)
+import System.Random
 
 import Utils
 
@@ -64,8 +65,8 @@ data Status = Bomb | SafeArea Int
 data Life = Alive | Dead
   deriving (Show)
 
-newGame :: Size -> Int -> IO FieldState
-newGame size mineCount = (FieldState pop Alive . Field size) <$> randomPickN pop mineCount
+newGame :: Int -> Size -> Int -> FieldState
+newGame seed size mineCount = FieldState pop Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
   where pop = universe size
 
 isVisible :: Coord -> FieldState -> Bool

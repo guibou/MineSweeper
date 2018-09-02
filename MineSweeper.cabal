@@ -27,6 +27,7 @@ library
                      , jsaddle
                      , text
                      , random-shuffle
+                     , random
   default-extensions:
 
   ghc-options: -Wall -Wno-partial-type-signatures -Wincomplete-uni-patterns

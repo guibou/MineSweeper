@@ -23,7 +23,7 @@ number i = Text.pack $ show i
 go :: IO ()
 go = mainWidgetWithCss css $ mdo
   let size = Size 15 15
-  randomGame <- liftIO $ newGame size 20
+      randomGame = newGame 0 size 20 -- fixed seed
 
   game <- foldDyn play randomGame e
   e <- mineSweeperWidget size game
