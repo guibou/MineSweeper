@@ -105,9 +105,16 @@ cell coord st' = do
     pure evt
   switchHold never e
 
+clsStatus :: WinStatus -> Text
+clsStatus Win = "win"
+clsStatus Lose = "lose"
+clsStatus (Current _) = "playing"
+
 mineSweeperWidget :: _ => Size -> Dynamic t FieldState -> m (Event t Coord)
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
-  el "table" $ do
+  let dynStatus = clsStatus . getGameStatus <$> fieldDyn
+
+  elDynClass "table" dynStatus $ do
     for (allCells size) $ \line -> do
       el "tr" $ do
         for line $ \coord -> do

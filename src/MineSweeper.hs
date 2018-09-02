@@ -8,6 +8,7 @@ module MineSweeper
   , Status(..)
   , HiddenStatus(..)
   , StatusModifier(..)
+  , WinStatus(..)
   , getGameStatus
   , play
   , fieldSize
@@ -76,13 +77,13 @@ data Life = Alive | Dead
 data MineAction = Flag | Open
   deriving (Show)
 
-data GameStatus
+data WinStatus
   = Win
   | Lose
   | Current Int
   deriving (Show)
 
-getGameStatus :: FieldState -> GameStatus
+getGameStatus :: FieldState -> WinStatus
 getGameStatus (FieldState _ Dead _) = Lose
 getGameStatus (FieldState visibility Alive (Field _ mines))
   | nbHidden == nbMines = Win
