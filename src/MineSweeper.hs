@@ -1,5 +1,4 @@
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS -Wall #-}
 module MineSweeper
   ( newGame
   , Size(..)
@@ -12,7 +11,6 @@ module MineSweeper
   , play
   , fieldSize
   , allCells
-  , debugStatus
   , getFieldStatus
   ) where
 
@@ -82,13 +80,12 @@ data GameStatus
 
 getGameStatus :: FieldState -> GameStatus
 getGameStatus (FieldState _ _ Dead _) = Lose
-getGameStatus (FieldState hidden flags Alive (Field (Size x y) mines))
+getGameStatus (FieldState hidden flags Alive (Field _ mines))
   | nbOpenableCases == (nbMines - nbFlags) = Win
   | otherwise = Current (nbMines - nbFlags) nbFlags nbOpenableCases
 
   where
     nbMines = Set.size mines
-    nbCases = x * y
     nbFlags = Set.size flags
     nbHidden = Set.size hidden
 
@@ -107,8 +104,8 @@ isFlagged c (FieldState _ flags _ _) = c `Set.member` flags
 fieldSize :: FieldState -> Size
 fieldSize (FieldState _ _ _ (Field size _)) = size
 
-display :: FieldState -> IO ()
-display fs@(FieldState _ _ _ field) = do
+_display :: FieldState -> IO ()
+_display fs@(FieldState _ _ _ _) = do
   case fieldStatus fs of
     Dead -> putStrLn "DEAD"
     _ -> pure ()
@@ -117,7 +114,8 @@ display fs@(FieldState _ _ _ field) = do
       putStr (debugStatus fs coord)
     putChar '\n'
 
-debugStatus field coord = paren visible (charStatus coord)
+debugStatus :: FieldState -> Coord -> [Char]
+debugStatus field coord = paren visible charStatus
   where
     (visible, status) = getFieldStatus coord field
 
@@ -125,7 +123,7 @@ debugStatus field coord = paren visible (charStatus coord)
     paren Hidden c = ['[', c, ']']
     paren Flagged c = ['{', c, '}']
 
-    charStatus coord = case status of
+    charStatus = case status of
       Bomb -> '*'
       SafeArea 0 -> '_'
       SafeArea i -> head (show i)
@@ -140,9 +138,9 @@ data StatusModifier
   deriving (Show, Eq)
 
 getFieldStatus :: Coord -> FieldState -> (StatusModifier, Status)
-getFieldStatus c field@(FieldState _ _ _ f) = (mod, getStatus c f)
+getFieldStatus c field@(FieldState _ _ _ f) = (modifier, getStatus c f)
   where
-    mod
+    modifier
      | isVisible c field = Visible
      | isFlagged c field = Flagged
      | otherwise = Hidden
@@ -160,7 +158,7 @@ play (c, action) fs@(FieldState hiddens flags Alive field) = case action of
    | not $ c `Set.member` hiddens -> fs -- already opened
    | otherwise -> case getStatus c field of
      Bomb -> newField Dead
-     SafeArea 0 -> foldl (\f c -> play (c, Open) f) (newField Alive) (border c)
+     SafeArea 0 -> foldl (\f coord -> play (coord, Open) f) (newField Alive) (border c)
      SafeArea _ -> newField Alive
    where
        newField l = FieldState (Set.delete c hiddens) flags l field
