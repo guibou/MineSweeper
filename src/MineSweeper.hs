@@ -132,19 +132,20 @@ getStatus coord (Field _ bombs)
   | otherwise = SafeArea (count (`Set.member` bombs) (border coord))
       
 play :: (Coord, MineAction) -> FieldState -> FieldState
-play (c, action) fs@(FieldState hiddens flags life field) = case action of
+play _ fs@(FieldState _ _ Dead _) = fs
+play (c, action) fs@(FieldState hiddens flags Alive field) = case action of
   Open
    | c `Set.member` flags -> fs -- cannot open if flagged
    | not $ c `Set.member` hiddens -> fs -- already opened
    | otherwise -> case getStatus c field of
      Bomb -> newField Dead
-     SafeArea 0 -> foldl (\f c -> play (c, Open) f) (newField life) (border c)
-     SafeArea _ -> newField life
+     SafeArea 0 -> foldl (\f c -> play (c, Open) f) (newField Alive) (border c)
+     SafeArea _ -> newField Alive
    where
        newField l = FieldState (Set.delete c hiddens) flags l field
   Flag
    | not $ c `Set.member` hiddens -> fs -- cannot flag if open
-   | otherwise -> FieldState hiddens (toggleInSet c flags) life field
+   | otherwise -> FieldState hiddens (toggleInSet c flags) Alive field
 
 toggleInSet :: Ord t => t -> Set t -> Set t
 toggleInSet v set
