@@ -11,6 +11,17 @@ import Data.ByteString (ByteString)
 
 css :: ByteString
 css = (encodeUtf8 . toStrict . render) $ do
+  ".header" ? do
+    display flex
+
+    ".mineCount" ? do
+      fontColor red
+    ".timer" ? do
+      animationName "expand"
+      animationDuration (sec 0.5)
+
+      keyframes "expand" [(0, Clay.opacity 0)]
+      
   table ? do
     width (pct 100)
     height (pct 100)

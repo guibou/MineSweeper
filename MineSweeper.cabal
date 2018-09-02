@@ -28,6 +28,7 @@ library
                      , text
                      , random-shuffle
                      , random
+                     , time
   default-extensions:
 
   ghc-options: -Wall -Wno-partial-type-signatures -Wincomplete-uni-patterns
