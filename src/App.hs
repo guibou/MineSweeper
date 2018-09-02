@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# OPTIONS -Wall -Wno-partial-type-signatures #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -16,6 +18,7 @@ import Data.Semigroup ((<>))
 import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
+import Data.Bool (bool)
 
 import qualified Data.Text as Text
 
@@ -37,13 +40,20 @@ startByEvent _ r = r
 newGameRandom :: Size -> Int -> UTCTime -> FieldState
 newGameRandom size nbMines time = newGame (truncate $ utcTimeToPOSIXSeconds time) size nbMines
 
-header :: _ => Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t ())
+header :: MonadWidget t m => Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t (), Dynamic t MineAction)
 header gameStatus timer = do
   divClass "header" $ do
     restartEvt <- elClass "span" "restart" $ button "Restart"
     divClass "timer" $ text "Time: " >> dynText (toSec <$> gameStatus <*> timer)
     divClass "mineCount" $ text "Mines: " >> text "20"
-    pure restartEvt
+    mineAction <- flagToolbar never
+    pure (restartEvt, mineAction)
+
+flagToolbar :: MonadWidget t m => Event t () -> m (Dynamic t MineAction)
+flagToolbar _eventReset = do
+  text "Flag: "
+  check <- checkbox False def
+  pure (bool Open Flag <$> value check)
 
 go :: IO ()
 go = mainWidgetWithCss css $ mdo
@@ -61,12 +71,12 @@ go = mainWidgetWithCss css $ mdo
                                          const NotRunning <$ restartEvt
                                        ])
 
-  restartEvt <- header gameStatus timer
+  (restartEvt, mineAction) <- header gameStatus timer
 
   let newGameEvent = newGameRandom size nbMines <$> (current timer <@ restartEvt)
 
   let gameEvents = leftmost [
-        play <$> e,
+        (\mode -> play . (,mode)) <$> current mineAction <@> e,
         const <$> newGameEvent
         ]
   game <- foldDyn ($) randomGame gameEvents
@@ -76,17 +86,18 @@ go = mainWidgetWithCss css $ mdo
 nbsp :: Text
 nbsp = " "
 
-cell :: _ => Coord -> Dynamic t (Bool, Status) -> m (Event t Coord)
+cell :: _ => Coord -> Dynamic t (StatusModifier, Status) -> m (Event t Coord)
 cell coord st' = do
   st <- holdUniqDyn st'
 
   e <- dyn . ffor st $ \status -> mdo
     let (cls, t, e) = case status of
-          (False, _) -> ("hidden", nbsp, coord <$ domEvent Click td)
-          (True, c) -> case c of
+          (Hidden, _) -> ("hidden", nbsp, coord <$ domEvent Click td)
+          (Visible, c) -> case c of
             Bomb -> ("bomb", "B", never)
             SafeArea 0 -> ("empty", nbsp, never)
             SafeArea i -> ("safe" <> number i, number i, never)
+          (Flagged, _) -> ("flagged", "F", (coord <$ domEvent Click td))
     (td, _) <- elClass' "td" cls (text t)
     pure e
   switchHold never e

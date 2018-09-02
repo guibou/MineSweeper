@@ -1,10 +1,13 @@
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS -Wall #-}
 module MineSweeper
   ( newGame
   , Size(..)
+  , MineAction(..)
   , Coord(..)
   , FieldState
   , Status(..)
+  , StatusModifier(..)
   , play
   , fieldSize
   , allCells
@@ -56,7 +59,9 @@ universe = Set.fromList . mconcat . allCells
 data Field = Field Size (Set Coord)
   deriving Show
 
-data FieldState = FieldState (Set Coord) Life Field
+-- TODO: two set sucks
+-- I need to refactor with only one Map of Visible | Hidden | Flag
+data FieldState = FieldState (Set Coord) (Set Coord) Life Field
   deriving Show
 
 data Status = Bomb | SafeArea Int
@@ -65,19 +70,24 @@ data Status = Bomb | SafeArea Int
 data Life = Alive | Dead
   deriving (Show)
 
+data MineAction = Flag | Open
+  deriving (Show)
+
 newGame :: Int -> Size -> Int -> FieldState
-newGame seed size mineCount = FieldState pop Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
+newGame seed size mineCount = FieldState pop (Set.empty) Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
   where pop = universe size
 
 isVisible :: Coord -> FieldState -> Bool
-isVisible c (FieldState hidden _ _) = not $ c `Set.member` hidden
+isVisible c (FieldState hidden _ _ _) = not $ c `Set.member` hidden
 
+isFlagged :: Coord -> FieldState -> Bool
+isFlagged c (FieldState _ flags _ _) = c `Set.member` flags
 
 fieldSize :: FieldState -> Size
-fieldSize (FieldState _ _ (Field size _)) = size
+fieldSize (FieldState _ _ _ (Field size _)) = size
 
 display :: FieldState -> IO ()
-display fs@(FieldState _ _ field) = do
+display fs@(FieldState _ _ _ field) = do
   case fieldStatus fs of
     Dead -> putStrLn "DEAD"
     _ -> pure ()
@@ -90,8 +100,9 @@ debugStatus field coord = paren visible (charStatus coord)
   where
     (visible, status) = getFieldStatus coord field
 
-    paren True c = [' ', c, ' ']
-    paren False c = ['[', c, ']']
+    paren Visible c = [' ', c, ' ']
+    paren Hidden c = ['[', c, ']']
+    paren Flagged c = ['{', c, '}']
 
     charStatus coord = case status of
       Bomb -> '*'
@@ -99,22 +110,43 @@ debugStatus field coord = paren visible (charStatus coord)
       SafeArea i -> head (show i)
 
 fieldStatus :: FieldState -> Life
-fieldStatus (FieldState _ life _) = life
+fieldStatus (FieldState _ _ life _) = life
 
-getFieldStatus :: Coord -> FieldState -> (Bool, Status)
-getFieldStatus c field@(FieldState _ _ f) = (isVisible c field, getStatus c f)
+data StatusModifier
+  = Visible
+  | Flagged
+  | Hidden
+  deriving (Show, Eq)
+
+getFieldStatus :: Coord -> FieldState -> (StatusModifier, Status)
+getFieldStatus c field@(FieldState _ _ _ f) = (mod, getStatus c f)
+  where
+    mod
+     | isVisible c field = Visible
+     | isFlagged c field = Flagged
+     | otherwise = Hidden
 
 getStatus :: Coord -> Field -> Status
 getStatus coord (Field _ bombs)
   | coord `Set.member` bombs = Bomb
   | otherwise = SafeArea (count (`Set.member` bombs) (border coord))
       
-play :: Coord -> FieldState -> FieldState
-play c fs@(FieldState hiddens life field)
-  | not $ c `Set.member` hiddens = fs
-  | otherwise = case getStatus c field of
-    Bomb -> newField Dead
-    SafeArea 0 -> foldl (flip play) (newField life) (border c)
-    SafeArea _ -> newField life
-  where
-      newField l = FieldState (Set.delete c hiddens) l field
+play :: (Coord, MineAction) -> FieldState -> FieldState
+play (c, action) fs@(FieldState hiddens flags life field) = case action of
+  Open
+   | c `Set.member` flags -> fs -- cannot open if flagged
+   | not $ c `Set.member` hiddens -> fs -- already opened
+   | otherwise -> case getStatus c field of
+     Bomb -> newField Dead
+     SafeArea 0 -> foldl (\f c -> play (c, Open) f) (newField life) (border c)
+     SafeArea _ -> newField life
+   where
+       newField l = FieldState (Set.delete c hiddens) flags l field
+  Flag
+   | not $ c `Set.member` hiddens -> fs -- cannot flag if open
+   | otherwise -> FieldState hiddens (toggleInSet c flags) life field
+
+toggleInSet :: Ord t => t -> Set t -> Set t
+toggleInSet v set
+  | v `Set.member` set = Set.delete v set
+  | otherwise = Set.insert v set
