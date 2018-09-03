@@ -156,20 +156,23 @@ play
 play action c fs@(GameState visibility field)
   | Playing <- gameResult fs = case action of
   Reveal
-   | Just Flagged <- Map.lookup c visibility -> fs
+   | Just Flagged <- Map.lookup c visibility -> play Flag c fs -- Reveal a 'Flagged': removes the Flag status
    | Nothing <- Map.lookup c visibility -> fs -- already opened
-   | otherwise -> GameState (reveal c visibility field) field
-  Flag -> GameState (Map.alter fAlter c visibility) field
-    where fAlter Nothing = Nothing
-          fAlter (Just NotFlagged) = Just Flagged
-          fAlter (Just Flagged) = Just NotFlagged
-  | otherwise = fs
+   | otherwise -> GameState (reveal c visibility field) field -- We can cascade reveal this case
+  Flag -> GameState (Map.alter (fmap flipFlag) c visibility) field -- toggle the flag status if any
+  | otherwise = fs -- If not playing, don't change anything
 
+-- | Unconditionally 'Reveal' a case and its border
 reveal :: Coord -> Map Coord a -> Field -> Map Coord a
 reveal c visibility field
-  | Nothing <- Map.lookup c visibility = visibility -- already opened
+  | Nothing <- Map.lookup c visibility = visibility -- already revealed
   | otherwise = case getStatus c field of
-    SafeArea 0 -> foldl (\v coord -> reveal coord v field) newVisibility (border c)
+    SafeArea 0 -> foldl (\v coord -> reveal coord v field) newVisibility (border c) -- cascade reveal
     _ -> newVisibility
    where
        newVisibility = Map.delete c visibility
+
+-- | Toggle the flagged status
+flipFlag :: Flagged -> Flagged
+flipFlag NotFlagged = Flagged
+flipFlag Flagged = NotFlagged
