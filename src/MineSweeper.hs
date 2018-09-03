@@ -75,7 +75,7 @@ data Flagged = NotFlagged | Flagged
   deriving (Show, Eq)
 
 -- | Opaque type. Stores a Mine game
-data GameState = GameState (Map Coord Flagged) Life Field
+data GameState = GameState (Map Coord Flagged) Field
   deriving Show
 
 -- | What's inside a case
@@ -84,15 +84,11 @@ data CaseContent
   | SafeArea Int -- ^ No Bomb, there are 'Int' Bomb in the border
   deriving (Show, Eq)
 
--- | Current game status. TODO: merge with GameResult
-data Life = Alive | Dead
-  deriving (Show)
-
 -- | State of the current game
 data GameResult
   = Win -- ^ This game is done and won
   | Lose -- ^ Done and lost
-  | Current Int -- ^ Still running
+  | Playing -- ^ Still playing
   deriving (Show)
 
 -- | Information of visibility
@@ -111,11 +107,10 @@ data MineAction
 
 -- | Tells if we are still playing or if the game is done
 gameResult :: GameState -> GameResult
-gameResult (GameState _ Dead _) = Lose
-gameResult (GameState visibility Alive (Field _ mines))
-  | nbHidden == nbMines = Win
-  | otherwise = Current nbHidden
-
+gameResult (GameState visibility (Field _ mines))
+  | not (null (mines `Set.difference` (Map.keysSet visibility))) = Lose -- A mine is visible
+  | nbHidden == nbMines = Win -- all mines are hidden / flagged
+  | otherwise = Playing
   where
     nbMines = Set.size mines
     nbHidden = Map.size visibility
@@ -126,18 +121,18 @@ newGame
   -> Size -- ^ New size
   -> Int -- ^ Number of mines
   -> GameState
-newGame seed size mineCount = GameState popMap Alive . Field size $ randomPickN pop mineCount (mkStdGen seed)
+newGame seed size mineCount = GameState popMap . Field size $ randomPickN pop mineCount (mkStdGen seed)
   where
     pop = universe size
     popMap = Map.fromSet (const NotFlagged) pop
 
 -- | Returns the 'Size' of the game
 fieldSize :: GameState -> Size
-fieldSize (GameState _ _ (Field size _)) = size
+fieldSize (GameState _ (Field size _)) = size
 
 -- | Returns what's inside the case and what the player can see
 caseStatus :: Coord -> GameState -> (Visibility, CaseContent)
-caseStatus c (GameState visibility _ f) = (modifier, getStatus c f)
+caseStatus c (GameState visibility f) = (modifier, getStatus c f)
   where
     modifier = maybe Visible Hidden (Map.lookup c visibility)
 
@@ -158,18 +153,19 @@ play
   -> Coord
   -> GameState
   -> GameState
-play _ _ fs@(GameState _ Dead _) = fs
-play action c fs@(GameState visibility Alive field) = case action of
+play action c fs@(GameState visibility field)
+  | Playing <- gameResult fs = case action of
   Reveal
    | Just Flagged <- Map.lookup c visibility -> fs
    | Nothing <- Map.lookup c visibility -> fs -- already opened
    | otherwise -> case getStatus c field of
-     Bomb -> newField Dead
-     SafeArea 0 -> foldl (\f coord -> play Reveal coord f) (newField Alive) (border c)
-     SafeArea _ -> newField Alive
+     Bomb -> newField
+     SafeArea 0 -> foldl (\f coord -> play Reveal coord f) newField (border c)
+     SafeArea _ -> newField
    where
-       newField l = GameState (Map.delete c visibility) l field
-  Flag -> GameState (Map.alter fAlter c visibility) Alive field
+       newField = GameState (Map.delete c visibility) field
+  Flag -> GameState (Map.alter fAlter c visibility) field
     where fAlter Nothing = Nothing
           fAlter (Just NotFlagged) = Just Flagged
           fAlter (Just Flagged) = Just NotFlagged
+  | otherwise = fs

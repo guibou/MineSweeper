@@ -107,7 +107,7 @@ cell coord st' = do
 clsStatus :: GameResult -> Text
 clsStatus Win = "win"
 clsStatus Lose = "lose"
-clsStatus (Current _) = "playing"
+clsStatus Playing = "playing"
 
 mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t Coord)
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
