@@ -12,7 +12,6 @@ import UIReflex.CSS
 import Control.Monad.IO.Class
 import Reflex.Dom
 import Data.Traversable (for)
-import Data.Semigroup ((<>))
 
 import Data.Text (Text)
 import Data.Time.Clock

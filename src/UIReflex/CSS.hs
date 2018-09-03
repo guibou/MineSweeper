@@ -6,7 +6,7 @@ import Prelude hiding (div, span)
 import Data.Text.Lazy (toStrict)
 import Data.Text.Encoding (encodeUtf8)
 import Clay
-import Data.Monoid ((<>))
+import Clay.Stylesheet
 
 import Data.ByteString (ByteString)
 
@@ -67,6 +67,7 @@ css = (encodeUtf8 . toStrict . render) $ do
   table # ".win" ? td # ".visible" ? displays
   table # ".lose" ? td ? displays
 
+displays :: StyleM ()
 displays = do
       span # ":after" ? do
         content (stringContent "B") -- No number, you are a bomb
