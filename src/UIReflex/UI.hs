@@ -35,10 +35,10 @@ startByEvent :: UTCTime -> GameStatus -> GameStatus
 startByEvent now NotRunning = Running now
 startByEvent _ r = r
 
-newGameRandom :: Size -> Int -> UTCTime -> FieldState
+newGameRandom :: Size -> Int -> UTCTime -> GameState
 newGameRandom size nbMines time = newGame (truncate $ utcTimeToPOSIXSeconds time) size nbMines
 
-header :: MonadWidget t m => Dynamic t FieldState -> Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t (), Dynamic t MineAction)
+header :: MonadWidget t m => Dynamic t GameState -> Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t (), Dynamic t MineAction)
 header fs gameStatus timer = do
   divClass "header" $ do
     restartEvt <- elClass "span" "restart" $ button "Restart"
@@ -46,7 +46,7 @@ header fs gameStatus timer = do
     divClass "mineCount" $ text "Mines: " >> text "20"
     mineAction <- flagToolbar never
 
-    text "Status: " >> display (getGameStatus <$> fs)
+    text "Status: " >> display (gameResult <$> fs)
 
     pure (restartEvt, mineAction)
 
@@ -54,7 +54,7 @@ flagToolbar :: MonadWidget t m => Event t () -> m (Dynamic t MineAction)
 flagToolbar _eventReset = do
   text "Flag: "
   check <- checkbox False def
-  pure (bool Open Flag <$> value check)
+  pure (bool Reveal Flag <$> value check)
 
 go :: IO ()
 go = mainWidgetWithCss css $ mdo
@@ -77,7 +77,7 @@ go = mainWidgetWithCss css $ mdo
   let newGameEvent = newGameRandom size nbMines <$> (current timer <@ restartEvt)
 
   let gameEvents = leftmost [
-        (\mode -> play . (,mode)) <$> current mineAction <@> e,
+        play <$> current mineAction <@> e,
         const <$> newGameEvent
         ]
   game <- foldDyn ($) randomGame gameEvents
@@ -87,7 +87,7 @@ go = mainWidgetWithCss css $ mdo
 nbsp :: Text
 nbsp = " "
 
-cell :: _ => Coord -> Dynamic t (StatusModifier, Status) -> m (Event t Coord)
+cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t Coord)
 cell coord st' = do
   st <- holdUniqDyn st'
 
@@ -97,24 +97,24 @@ cell coord st' = do
           Bomb -> mempty
           SafeArea i -> "data-number" =: Text.pack (show i)
         (clsVisibility, evt) = case visibility of 
-          Hidden Unknown -> ("hidden unknown", coord <$ domEvent Click td)
+          Hidden NotFlagged -> ("hidden unknown", coord <$ domEvent Click td)
           Hidden Flagged -> ("hidden flagged", (coord <$ domEvent Click td))
           Visible -> ("visible", never)
     (td, _) <- elClass' "td" clsVisibility $ elAttr "span" dataStatus $ text nbsp
     pure evt
   switchHold never e
 
-clsStatus :: WinStatus -> Text
+clsStatus :: GameResult -> Text
 clsStatus Win = "win"
 clsStatus Lose = "lose"
 clsStatus (Current _) = "playing"
 
-mineSweeperWidget :: _ => Size -> Dynamic t FieldState -> m (Event t Coord)
+mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t Coord)
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
-  let dynStatus = clsStatus . getGameStatus <$> fieldDyn
+  let dynStatus = clsStatus . gameResult <$> fieldDyn
 
   elDynClass "table" dynStatus $ do
     for (allCells size) $ \line -> do
       el "tr" $ do
         for line $ \coord -> do
-          cell coord (getFieldStatus coord <$> fieldDyn)
+          cell coord (caseStatus coord <$> fieldDyn)
