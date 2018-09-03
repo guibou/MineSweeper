@@ -20,7 +20,6 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Set (Set)
 import Data.Map (Map)
-import Data.Foldable (for_)
 import Control.Monad (guard)
 import System.Random
 
@@ -101,33 +100,6 @@ newGame seed size mineCount = FieldState popMap Alive . Field size $ randomPickN
 
 fieldSize :: FieldState -> Size
 fieldSize (FieldState _ _ (Field size _)) = size
-
-_display :: FieldState -> IO ()
-_display fs@(FieldState _ _ _) = do
-  case fieldStatus fs of
-    Dead -> putStrLn "DEAD"
-    _ -> pure ()
-  for_ (allCells (fieldSize fs)) $ \line -> do
-    for_ line $ \coord -> do
-      putStr (debugStatus fs coord)
-    putChar '\n'
-
-debugStatus :: FieldState -> Coord -> [Char]
-debugStatus field coord = paren visible charStatus
-  where
-    (visible, status) = getFieldStatus coord field
-
-    paren Visible c = [' ', c, ' ']
-    paren (Hidden Unknown) c = ['[', c, ']']
-    paren (Hidden Flagged) c = ['{', c, '}']
-
-    charStatus = case status of
-      Bomb -> '*'
-      SafeArea 0 -> '_'
-      SafeArea i -> head (show i)
-
-fieldStatus :: FieldState -> Life
-fieldStatus (FieldState _ life _) = life
 
 data StatusModifier
   = Visible
