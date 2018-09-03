@@ -146,8 +146,8 @@ getStatus coord (Field _ bombs)
 -- | Play a game action
 -- An action can 'Reveal' or 'Flag' a 'Coord'
 -- - If the action 'Flag', it will toggle the 'Flagged' status only of an 'Hidden' case
--- - If the action 'Reveal', it can only reveal a not 'Flagged' case
--- - If the game is 'Win' or 'Lose', action have no effect
+-- - If the action 'Reveal', it reveals a not 'Flagged' case or remove the 'Flagged' status
+-- - If the game is 'Done', it won't change anything
 play
   :: MineAction
   -> Coord
@@ -158,14 +158,18 @@ play action c fs@(GameState visibility field)
   Reveal
    | Just Flagged <- Map.lookup c visibility -> fs
    | Nothing <- Map.lookup c visibility -> fs -- already opened
-   | otherwise -> case getStatus c field of
-     Bomb -> newField
-     SafeArea 0 -> foldl (\f coord -> play Reveal coord f) newField (border c)
-     SafeArea _ -> newField
-   where
-       newField = GameState (Map.delete c visibility) field
+   | otherwise -> GameState (reveal c visibility field) field
   Flag -> GameState (Map.alter fAlter c visibility) field
     where fAlter Nothing = Nothing
           fAlter (Just NotFlagged) = Just Flagged
           fAlter (Just Flagged) = Just NotFlagged
   | otherwise = fs
+
+reveal :: Coord -> Map Coord a -> Field -> Map Coord a
+reveal c visibility field
+  | Nothing <- Map.lookup c visibility = visibility -- already opened
+  | otherwise = case getStatus c field of
+    SafeArea 0 -> foldl (\v coord -> reveal coord v field) newVisibility (border c)
+    _ -> newVisibility
+   where
+       newVisibility = Map.delete c visibility
