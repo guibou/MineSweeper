@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module CSS where
+module UIReflex.CSS where
 
 import Prelude hiding (div, span)
 

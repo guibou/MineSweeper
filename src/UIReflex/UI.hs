@@ -4,10 +4,10 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
-module App where
+module UIReflex.UI where
 
 import MineSweeper
-import CSS
+import UIReflex.CSS
 
 import Control.Monad.IO.Class
 import Reflex.Dom

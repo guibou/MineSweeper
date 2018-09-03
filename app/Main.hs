@@ -1,5 +1,5 @@
 -- This module is only used for android compilation
-import App
+import UIReflex.UI
 
 main :: IO ()
 main = go
