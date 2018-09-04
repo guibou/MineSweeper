@@ -21,7 +21,13 @@ You will get your APK inside `result`.
 
 ## Screenshot
 
+Browser version:
+
 ![MineSweeper](screenshot.png)
+
+Android build:
+
+![MineSweeper](screenshot_android.png)
 
 ## TODO
 
