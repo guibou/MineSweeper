@@ -26,8 +26,8 @@ You will get your APK inside `result`.
 ## TODO
 
 - Count the number of remaining mines
-- Stop the timer when the game is done
-- Find a better way to set flags. For now we need to change the mode using a checkbox, that's painful.
 - Runtime change of the game geometry (size / nb mines)
 - Nicer display on failure
 - Nice icons
+- Nice CSS
+- Cascade opening with animation
