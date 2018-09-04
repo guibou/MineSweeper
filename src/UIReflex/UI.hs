@@ -84,9 +84,6 @@ go = mainWidgetWithCss css $ mdo
   e <- mineSweeperWidget size game
   pure ()
 
-nbsp :: Text
-nbsp = " "
-
 cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, MineAction))
 cell coord st' = do
   st <- holdUniqDyn st'
@@ -100,7 +97,7 @@ cell coord st' = do
           Hidden NotFlagged -> "hidden unknown"
           Hidden Flagged -> "hidden flagged"
           Visible -> "visible"
-    (td, _) <- elClass' "td" clsVisibility $ elAttr "span" dataStatus $ text nbsp
+    (td, _) <- elClass' "td" clsVisibility $ elAttr "span" dataStatus $ blank
     longClick <- longClickEvent td
     let actionEvt = click2Action <$> longClick
     pure ((coord,) <$> actionEvt)
