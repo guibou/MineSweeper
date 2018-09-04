@@ -64,8 +64,7 @@ go = mainWidgetWithCss css $ mdo
       randomGame = newGameRandom size nbMines now
 
   now <- liftIO getCurrentTime
-  ticks <- tickLossy 0.5 now -- two time the sampling value ;)
-  timer <- holdDyn now (_tickInfo_lastUTC <$> ticks)
+  timer <- fmap _tickInfo_lastUTC <$> clockLossy 0.5 now
 
   gameStatus <- foldDyn ($) NotRunning (leftmost
                                        [
