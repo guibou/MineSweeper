@@ -27,7 +27,5 @@ You will get your APK inside `result`.
 
 - Count the number of remaining mines in a more efficient algorithm
 - Runtime change of the game geometry (size / nb mines)
-- Nicer display on failure
-- Nice icons
-- Nice CSS
 - Cascade opening with animation
+- Performance on android

@@ -18,6 +18,8 @@ import Data.Traversable (for)
 import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
+import Data.Semigroup
+
 
 import qualified Data.Text as Text
 
@@ -97,7 +99,10 @@ cell coord st' = do
           Hidden NotFlagged -> "hidden unknown"
           Hidden Flagged -> "hidden flagged"
           Visible -> "visible"
-    (td, _) <- elClass' "td" clsVisibility $ elAttr "span" dataStatus $ blank
+        clsContent = case innerStatus of
+          Bomb -> "bomb"
+          SafeArea i -> "safe"
+    (td, _) <- elClass' "td" (clsVisibility <> " " <> clsContent) $ elAttr "span" dataStatus $ blank
     longClick <- longClickEvent td
     let actionEvt = click2Action <$> longClick
     pure ((coord,) <$> actionEvt)
@@ -116,9 +121,8 @@ mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t (Coord, Mine
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
   let dynStatus = clsStatus . gameResult <$> fieldDyn
 
-  elAttr "div" ("onContextMenu" =: "function (){ return false; }") $ do
-    elDynClass "table" dynStatus $ do
-      for (allCells size) $ \line -> do
-        el "tr" $ do
-          for line $ \coord -> do
-            cell coord (caseStatus coord <$> fieldDyn)
+  elDynClass "table" dynStatus $ do
+    for (allCells size) $ \line -> do
+      el "tr" $ do
+        for line $ \coord -> do
+          cell coord (caseStatus coord <$> fieldDyn)

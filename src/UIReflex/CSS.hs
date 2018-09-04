@@ -11,9 +11,6 @@ import Clay.Stylesheet
 import Data.ByteString (ByteString)
 
 headerSize = 5
-gridSizeW = 17
-gridSizeH = 9
-gridSizeM = Prelude.max gridSizeW gridSizeH
 
 css :: ByteString
 css = (encodeUtf8 . toStrict . render) $ do
@@ -21,6 +18,8 @@ css = (encodeUtf8 . toStrict . render) $ do
     padding (px 0) 0 0 0
     margin (px 0) 0 0 0
     borderWidth (px 0)
+    "--gridSizeW" -: "17"
+    "--gridSizeH" -: "9"
 
   body ? do
     margin (pct 0) 0 0 0
@@ -41,15 +40,15 @@ css = (encodeUtf8 . toStrict . render) $ do
   table # ".win" ? do
     padding auto auto auto auto
     td # ".unknown" ? span # ":after" ? do -- not flagged bomb
-      color white
-      content (stringContent "B")
+      content (stringContent "💣") -- No number, you are a bomb
 
   -- custom override for losers
   table # ".lose" ? do
-    -- Wrong bomb
-    -- Wrong flag
-    -- Bomb
-    -- Case OK
+    td # ".flagged" ? do
+      backgroundColor lightcoral -- wrong flag
+
+    td # ".visible.bomb" ? do
+      backgroundColor lightcoral -- visible bomb
     pure ()
 
   table ? do
@@ -57,15 +56,15 @@ css = (encodeUtf8 . toStrict . render) $ do
     borderWidth (px 0)
 
     td # ".flagged" ? span # ":after" ? do
-      content (stringContent "F")
+      content (stringContent "🚩")
 
     td ? do
       boxSizing borderBox
-      width (vw (100 / gridSizeW))
-      height (vh ((100 - headerSize) / gridSizeH))
+      "width" -: "calc(100vh / var(--gridSizeH))"
+      "height" -: "calc(100vh / var(--gridSizeH))"
       fontFamily [] [monospace]
-      fontSize (em 2) -- TODO: find a real way to scale that, using images ?
-      borderWidth (px 1)
+      borderWidth (vmin 0.1)
+      "light-height" -: "1vmin"
       borderStyle solid
       borderColor grey
       backgroundColor lightgrey
@@ -78,8 +77,8 @@ css = (encodeUtf8 . toStrict . render) $ do
       keyframes "expand" [(0, Clay.opacity 0)]
 
     ".hidden" ? do
-      borderColor4 white dimgrey dimgrey white
-      borderWidth (px 10)
+      borderColor4 gainsboro dimgrey dimgrey gainsboro
+      borderWidth (vmin 1.5)
   table # ".playing" ? td # ".visible" ? displays
   table # ".win" ? td # ".visible" ? displays
   table # ".lose" ? td ? displays
@@ -87,7 +86,7 @@ css = (encodeUtf8 . toStrict . render) $ do
 displays :: StyleM ()
 displays = do
       span # ":after" ? do
-        content (stringContent "B") -- No number, you are a bomb
+        content (stringContent "💣") -- No number, you are a bomb
       span # "@data-number" # ":after" ? do
         content (attrContent "data-number")
       span # ("data-number" @= "0") # ":after" ? do
