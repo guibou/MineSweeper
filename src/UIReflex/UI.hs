@@ -26,16 +26,21 @@ number :: Show a => a -> Text
 number i = Text.pack $ show i
 
 toSec :: GameStatus -> UTCTime -> Text
+toSec (Terminated t) _ = Text.pack (show @Int (truncate t))
 toSec NotRunning _now = "-"
 toSec (Running started) now = Text.pack (show @Int (truncate $ now `diffUTCTime` started))
 
 data GameStatus = NotRunning
                 | Running UTCTime
+                | Terminated NominalDiffTime
                 deriving (Show)
 
-startByEvent :: UTCTime -> GameStatus -> GameStatus
-startByEvent now NotRunning = Running now
-startByEvent _ r = r
+startOrTerminateGame :: (UTCTime, GameState) -> GameStatus -> GameStatus
+startOrTerminateGame (now, _) NotRunning = Running now
+startOrTerminateGame (now, g) (Running t) = case gameResult g of
+  Done _ -> Terminated (now `diffUTCTime` t)
+  _ -> Running t
+startOrTerminateGame _ r = r
 
 newGameRandom :: Size -> Int -> UTCTime -> GameState
 newGameRandom size nbMines time = newGame (truncate $ utcTimeToPOSIXSeconds time) size nbMines
@@ -64,7 +69,7 @@ go = mainWidgetWithCss css $ mdo
 
   gameStatus <- foldDyn ($) NotRunning (leftmost
                                        [
-                                         startByEvent <$> (current timer <@ e),
+                                         startOrTerminateGame <$> ((,) <$> current timer <@> (Reflex.Dom.traceEvent "updated" $ updated game)),
                                          const NotRunning <$ restartEvt
                                        ])
 
