@@ -58,7 +58,8 @@ flagToolbar _eventReset = do
 
 go :: IO ()
 go = mainWidgetWithCss css $ mdo
-  let size = Size 15 15
+  -- TODO: size is not in the right order
+  let size = Size 9 17
       nbMines = 20
       randomGame = newGameRandom size nbMines now
 

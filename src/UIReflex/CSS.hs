@@ -10,10 +10,24 @@ import Clay.Stylesheet
 
 import Data.ByteString (ByteString)
 
+headerSize = 5
+gridSizeW = 17
+gridSizeH = 9
+gridSizeM = Prelude.max gridSizeW gridSizeH
+
 css :: ByteString
 css = (encodeUtf8 . toStrict . render) $ do
+  star ? do
+    padding (px 0) 0 0 0
+    margin (px 0) 0 0 0
+    borderWidth (px 0)
+
+  body ? do
+    margin (pct 0) 0 0 0
+
   ".header" ? do
     display flex
+    height (vh (headerSize - 0.95))
 
     ".mineCount" ? do
       fontColor red
@@ -25,6 +39,7 @@ css = (encodeUtf8 . toStrict . render) $ do
 
   -- custom override for all winners
   table # ".win" ? do
+    padding auto auto auto auto
     td # ".unknown" ? span # ":after" ? do -- not flagged bomb
       color white
       content (stringContent "B")
@@ -36,18 +51,20 @@ css = (encodeUtf8 . toStrict . render) $ do
     -- Bomb
     -- Case OK
     pure ()
-      
+
   table ? do
-    width (pct 100)
-    height (pct 100)
     borderCollapse collapse
-    "table-layout" -: "fixed"
+    borderWidth (px 0)
 
     td # ".flagged" ? span # ":after" ? do
       content (stringContent "F")
 
     td ? do
+      boxSizing borderBox
+      width (vw (100 / gridSizeW))
+      height (vh ((100 - headerSize) / gridSizeH))
       fontFamily [] [monospace]
+      fontSize (em 2) -- TODO: find a real way to scale that, using images ?
       borderWidth (px 1)
       borderStyle solid
       borderColor grey
