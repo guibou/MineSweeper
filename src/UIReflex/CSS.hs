@@ -10,8 +10,6 @@ import Clay.Stylesheet
 
 import Data.ByteString (ByteString)
 
-headerSize = 5
-
 css :: ByteString
 css = (encodeUtf8 . toStrict . render) $ do
   star ? do
@@ -20,13 +18,14 @@ css = (encodeUtf8 . toStrict . render) $ do
     borderWidth (px 0)
     "--gridSizeW" -: "17"
     "--gridSizeH" -: "9"
+    "--headerSize" -: "5vh"
 
   body ? do
     margin (pct 0) 0 0 0
 
   ".header" ? do
     display flex
-    height (vh (headerSize))
+    "height" -: "var(--headerSize)"
 
     ".mineCount" ? do
       fontColor red
@@ -53,6 +52,7 @@ css = (encodeUtf8 . toStrict . render) $ do
 
   table ? do
     --borderCollapse collapse
+    borderSpacing (px 0)
     borderWidth (px 0)
 
     td # ".flagged" ? span # ":after" ? do
@@ -60,11 +60,11 @@ css = (encodeUtf8 . toStrict . render) $ do
 
     td ? do
       boxSizing borderBox
-      "width" -: "calc(100vh / var(--gridSizeH))"
-      "height" -: "calc(100vh / var(--gridSizeH))"
+      "width" -: "calc(100vw / var(--gridSizeW))"
+      "height" -: "calc(0.99 * (100vh - var(--headerSize)) / var(--gridSizeH))"
       fontFamily [] [monospace]
       borderWidth (vmin 0.1)
-      "light-height" -: "1vmin"
+      "font-height" -: "1vmin"
       borderStyle solid
       borderColor grey
       backgroundColor lightgrey
