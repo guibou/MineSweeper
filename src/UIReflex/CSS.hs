@@ -27,7 +27,7 @@ css = (encodeUtf8 . toStrict . render) $ do
 
   ".header" ? do
     display flex
-    height (vh (headerSize - 0.95))
+    height (vh (headerSize))
 
     ".mineCount" ? do
       fontColor red
@@ -53,7 +53,7 @@ css = (encodeUtf8 . toStrict . render) $ do
     pure ()
 
   table ? do
-    borderCollapse collapse
+    --borderCollapse collapse
     borderWidth (px 0)
 
     td # ".flagged" ? span # ":after" ? do
@@ -78,8 +78,8 @@ css = (encodeUtf8 . toStrict . render) $ do
       keyframes "expand" [(0, Clay.opacity 0)]
 
     ".hidden" ? do
-      backgroundColor dimgrey
-
+      borderColor4 white dimgrey dimgrey white
+      borderWidth (px 10)
   table # ".playing" ? td # ".visible" ? displays
   table # ".win" ? td # ".visible" ? displays
   table # ".lose" ? td ? displays
