@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
 
-  exposed-modules:     UIReflex.UI, UIReflex.CSS, MineSweeper, Utils, UIText
+  exposed-modules:     UIReflex.UI, UIReflex.CSS, MineSweeper, Utils, UIText, UIReflex.LongClicks
   build-depends:       base
                      , reflex
                      , clay

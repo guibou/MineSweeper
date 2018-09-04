@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
@@ -8,6 +9,7 @@ module UIReflex.UI where
 
 import MineSweeper
 import UIReflex.CSS
+import UIReflex.LongClicks
 
 import Control.Monad.IO.Class
 import Reflex.Dom
@@ -16,9 +18,9 @@ import Data.Traversable (for)
 import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
-import Data.Bool (bool)
 
 import qualified Data.Text as Text
+
 
 number :: Show a => a -> Text
 number i = Text.pack $ show i
@@ -38,23 +40,16 @@ startByEvent _ r = r
 newGameRandom :: Size -> Int -> UTCTime -> GameState
 newGameRandom size nbMines time = newGame (truncate $ utcTimeToPOSIXSeconds time) size nbMines
 
-header :: MonadWidget t m => Dynamic t GameState -> Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t (), Dynamic t MineAction)
+header :: MonadWidget t m => Dynamic t GameState -> Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t ())
 header fs gameStatus timer = do
   divClass "header" $ do
     restartEvt <- elClass "span" "restart" $ button "Restart"
     divClass "timer" $ text "Time: " >> dynText (toSec <$> gameStatus <*> timer)
     divClass "mineCount" $ text "Mines: " >> text "20"
-    mineAction <- flagToolbar never
 
     text "Status: " >> display (gameResult <$> fs)
 
-    pure (restartEvt, mineAction)
-
-flagToolbar :: MonadWidget t m => Event t () -> m (Dynamic t MineAction)
-flagToolbar _eventReset = do
-  text "Flag: "
-  check <- checkbox False def
-  pure (bool Reveal Flag <$> value check)
+    pure restartEvt
 
 go :: IO ()
 go = mainWidgetWithCss css $ mdo
@@ -73,12 +68,12 @@ go = mainWidgetWithCss css $ mdo
                                          const NotRunning <$ restartEvt
                                        ])
 
-  (restartEvt, mineAction) <- header game gameStatus timer
+  restartEvt <- header game gameStatus timer
 
   let newGameEvent = newGameRandom size nbMines <$> (current timer <@ restartEvt)
 
   let gameEvents = leftmost [
-        play <$> current mineAction <@> e,
+        uncurry (flip play) <$> e,
         const <$> newGameEvent
         ]
   game <- foldDyn ($) randomGame gameEvents
@@ -88,7 +83,7 @@ go = mainWidgetWithCss css $ mdo
 nbsp :: Text
 nbsp = " "
 
-cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t Coord)
+cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, MineAction))
 cell coord st' = do
   st <- holdUniqDyn st'
 
@@ -97,25 +92,32 @@ cell coord st' = do
         dataStatus = case innerStatus of
           Bomb -> mempty
           SafeArea i -> "data-number" =: Text.pack (show i)
-        (clsVisibility, evt) = case visibility of 
-          Hidden NotFlagged -> ("hidden unknown", coord <$ domEvent Click td)
-          Hidden Flagged -> ("hidden flagged", (coord <$ domEvent Click td))
-          Visible -> ("visible", never)
+        clsVisibility = case visibility of 
+          Hidden NotFlagged -> "hidden unknown"
+          Hidden Flagged -> "hidden flagged"
+          Visible -> "visible"
     (td, _) <- elClass' "td" clsVisibility $ elAttr "span" dataStatus $ text nbsp
-    pure evt
+    longClick <- longClickEvent td
+    let actionEvt = click2Action <$> longClick
+    pure ((coord,) <$> actionEvt)
   switchHold never e
+
+click2Action :: ClickType -> MineAction
+click2Action LongClick = Flag
+click2Action ShortClick = Reveal
 
 clsStatus :: GameResult -> Text
 clsStatus (Done Win) = "win"
 clsStatus (Done Lose) = "lose"
 clsStatus Playing = "playing"
 
-mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t Coord)
+mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t (Coord, MineAction))
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
   let dynStatus = clsStatus . gameResult <$> fieldDyn
 
-  elDynClass "table" dynStatus $ do
-    for (allCells size) $ \line -> do
-      el "tr" $ do
-        for line $ \coord -> do
-          cell coord (caseStatus coord <$> fieldDyn)
+  elAttr "div" ("onContextMenu" =: "function (){ return false; }") $ do
+    elDynClass "table" dynStatus $ do
+      for (allCells size) $ \line -> do
+        el "tr" $ do
+          for line $ \coord -> do
+            cell coord (caseStatus coord <$> fieldDyn)
