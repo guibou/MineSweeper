@@ -70,7 +70,7 @@ go = mainWidgetWithCss css $ mdo
 
   gameStatus <- foldDyn ($) NotRunning (leftmost
                                        [
-                                         startOrTerminateGame <$> ((,) <$> current timer <@> (Reflex.Dom.traceEvent "updated" $ updated game)),
+                                         startOrTerminateGame <$> ((,) <$> current timer <@> (updated game)),
                                          const NotRunning <$ restartEvt
                                        ])
 
@@ -101,7 +101,7 @@ cell coord st' = do
           Visible -> "visible"
         clsContent = case innerStatus of
           Bomb -> "bomb"
-          SafeArea i -> "safe"
+          SafeArea _ -> "safe"
     (td, _) <- elClass' "td" (clsVisibility <> " " <> clsContent) $ elAttr "span" dataStatus $ blank
     longClick <- longClickEvent td
     let actionEvt = click2Action <$> longClick
