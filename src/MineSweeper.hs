@@ -15,6 +15,7 @@ module MineSweeper
   , Flagged(..)
   , Visibility(..)
   , GameResult(..)
+  , WinLose(..)
   , gameResult
   , caseStatus
   -- * Game Actions
@@ -86,9 +87,12 @@ data CaseContent
 
 -- | State of the current game
 data GameResult
-  = Win -- ^ This game is done and won
-  | Lose -- ^ Done and lost
+  = Done WinLose -- ^ This game is done
   | Playing -- ^ Still playing
+  deriving (Show)
+
+-- | State of a terminated game
+data WinLose = Win | Lose
   deriving (Show)
 
 -- | Information of visibility
@@ -108,8 +112,8 @@ data MineAction
 -- | Tells if we are still playing or if the game is done
 gameResult :: GameState -> GameResult
 gameResult (GameState visibility (Field _ mines))
-  | not (null (mines `Set.difference` (Map.keysSet visibility))) = Lose -- A mine is visible
-  | nbHidden == nbMines = Win -- all mines are hidden / flagged
+  | not (null (mines `Set.difference` (Map.keysSet visibility))) = Done Lose -- A mine is visible
+  | nbHidden == nbMines = Done Win -- all mines are hidden / flagged
   | otherwise = Playing
   where
     nbMines = Set.size mines
@@ -142,7 +146,6 @@ getStatus coord (Field _ bombs)
   | coord `Set.member` bombs = Bomb
   | otherwise = SafeArea (count (`Set.member` bombs) (border coord))
 
-
 -- | Play a game action
 -- An action can 'Reveal' or 'Flag' a 'Coord'
 -- - If the action 'Flag', it will toggle the 'Flagged' status only of an 'Hidden' case
@@ -154,18 +157,22 @@ play
   -> GameState
   -> GameState
 play action c fs@(GameState visibility field)
-  | Playing <- gameResult fs = case action of
-  Reveal
-   | Just Flagged <- Map.lookup c visibility -> play Flag c fs -- Reveal a 'Flagged': removes the Flag status
-   | Nothing <- Map.lookup c visibility -> fs -- already opened
-   | otherwise -> GameState (reveal c visibility field) field -- We can cascade reveal this case
-  Flag -> GameState (Map.alter (fmap flipFlag) c visibility) field -- toggle the flag status if any
-  | otherwise = fs -- If not playing, don't change anything
+  | Done _ <- gameResult fs = fs -- Game is done, nothing to do
+  | otherwise = case action of
+  Flag -> -- toggle the flag status if any
+    GameState (Map.alter (fmap flipFlag) c visibility) field
+  Reveal -> case Map.lookup c visibility of
+    Just Flagged -- Reveal a 'Flagged': removes the Flag status
+      -> play Flag c fs
+    Just NotFlagged -- We can cascade reveal this case
+      -> GameState (reveal c visibility field) field
+    Nothing -- already opened, do nothing
+      -> fs
 
 -- | Unconditionally 'Reveal' a case and its border
 reveal :: Coord -> Map Coord a -> Field -> Map Coord a
 reveal c visibility field
-  | Nothing <- Map.lookup c visibility = visibility -- already revealed
+  | Map.notMember c visibility = visibility -- already revealed
   | otherwise = case getStatus c field of
     SafeArea 0 -> foldl (\v coord -> reveal coord v field) newVisibility (border c) -- cascade reveal
     _ -> newVisibility

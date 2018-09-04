@@ -105,8 +105,8 @@ cell coord st' = do
   switchHold never e
 
 clsStatus :: GameResult -> Text
-clsStatus Win = "win"
-clsStatus Lose = "lose"
+clsStatus (Done Win) = "win"
+clsStatus (Done Lose) = "lose"
 clsStatus Playing = "playing"
 
 mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t Coord)
