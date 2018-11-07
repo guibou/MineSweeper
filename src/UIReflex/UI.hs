@@ -59,32 +59,46 @@ header fs gameStatus timer = do
 
     pure restartEvt
 
+endGameBanner :: MonadWidget t m => m (Event t ())
+endGameBanner = do
+  (dom, _) <- elClass' "div" "banner" $ do
+    text "click to restart"
+  
+  pure $ domEvent Click dom
+
 go :: IO ()
 go = mainWidgetWithCss css $ mdo
-  -- TODO: size is not in the right order
-  let size = Size 9 17
-      nbMines = 20
-      randomGame = newGameRandom size nbMines now
+  let dynStatus = clsStatus . gameResult <$> game
 
-  now <- liftIO getCurrentTime
-  timer <- fmap _tickInfo_lastUTC <$> clockLossy 0.5 now
+  game <- elDynClass "div" dynStatus $ mdo
+    -- TODO: size is not in the right order
+    let size = Size 9 17
+        nbMines = 20
+        randomGame = newGameRandom size nbMines now
 
-  gameStatus <- foldDyn ($) NotRunning (leftmost
-                                       [
-                                         startOrTerminateGame <$> ((,) <$> current timer <@> (updated game)),
-                                         const NotRunning <$ restartEvt
-                                       ])
+    now <- liftIO getCurrentTime
+    {-
+    gameStatus <- foldDyn ($) NotRunning (leftmost
+                                         [
+                                           startOrTerminateGame <$> ((,) <$> current timer <@> (updated game)),
+                                           const NotRunning <$ restartEvt
+                                         ])
 
-  restartEvt <- header game gameStatus timer
+    restartEvt <- header game gameStatus
+    -}
 
-  let newGameEvent = newGameRandom size nbMines <$> (current timer <@ restartEvt)
+    restartEvt <- endGameBanner
+    
+    currentRestartTime <- performEvent ((\_ -> liftIO getCurrentTime) <$> restartEvt)
+    let newGameEvent = newGameRandom size nbMines <$> currentRestartTime
 
-  let gameEvents = leftmost [
-        uncurry (flip play) <$> e,
-        const <$> newGameEvent
-        ]
-  game <- foldDyn ($) randomGame gameEvents
-  e <- mineSweeperWidget size game
+    let gameEvents = leftmost [
+          uncurry (flip play) <$> e,
+          const <$> newGameEvent
+          ]
+    game <- foldDyn ($) randomGame gameEvents
+    e <- mineSweeperWidget size game
+    pure game
   pure ()
 
 cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, MineAction))
@@ -119,9 +133,7 @@ clsStatus (Playing _) = "playing"
 
 mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t (Coord, MineAction))
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
-  let dynStatus = clsStatus . gameResult <$> fieldDyn
-
-  elDynClass "table" dynStatus $ do
+  el "table" $ do
     for (allCells size) $ \line -> do
       el "tr" $ do
         for line $ \coord -> do

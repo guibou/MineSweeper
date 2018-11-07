@@ -18,7 +18,7 @@ css = (encodeUtf8 . toStrict . render) $ do
     borderWidth (px 0)
     "--gridSizeW" -: "17"
     "--gridSizeH" -: "9"
-    "--headerSize" -: "5vh"
+    "--headerSize" -: "0vh"
 
   body ? do
     margin (pct 0) 0 0 0
@@ -33,13 +33,13 @@ css = (encodeUtf8 . toStrict . render) $ do
       keyframes "expand" [(0, Clay.opacity 0)]
 
   -- custom override for all winners
-  table # ".win" ? do
+  ".win" ? table ? do
     padding auto auto auto auto
     td # ".unknown" ? span # ":after" ? do -- not flagged bomb
       content (stringContent "💣") -- No number, you are a bomb
 
   -- custom override for losers
-  table # ".lose" ? do
+  ".lose" ? table ? do
     td # ".flagged" ? do
       backgroundColor lightcoral -- wrong flag
 
@@ -72,9 +72,33 @@ css = (encodeUtf8 . toStrict . render) $ do
     ".hidden" ? do
       borderColor4 gainsboro dimgrey dimgrey gainsboro
       borderWidth (vmin 1.5)
-  table # ".playing" ? td # ".visible" ? displays
-  table # ".win" ? td # ".visible" ? displays
-  table # ".lose" ? td ? displays
+  ".playing" ? table ? td # ".visible" ? displays
+  ".win" ? table ? td # ".visible" ? displays
+  ".lose" ? table ? td ? displays
+
+  ".banner" ? do
+    position fixed
+    top (pct 50)
+    left (pct 50)
+    "transform" -: "translate(-50%, -50%)"
+    borderStyle solid
+    borderWidth (px 1)
+    display none
+    fontSize (vh 10)
+    
+  ".win" ? ".banner" ? do
+    backgroundColor (setA 0.4 (toRgba lightgreen))
+    borderColor green
+    display block
+  ".win" ? ".banner" # ":before" ? do
+    content (stringContent "Winner: ")
+
+  ".lose" ? ".banner" ? do
+    backgroundColor (setA 0.4 (toRgba lightpink))
+    borderColor red
+    display block
+  ".lose" ? ".banner" # ":before" ? do
+    content (stringContent "Loser: ")
 
 displays :: StyleM ()
 displays = do
