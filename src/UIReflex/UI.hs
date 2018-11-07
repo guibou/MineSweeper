@@ -5,6 +5,7 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 module UIReflex.UI where
 
 import MineSweeper
@@ -90,23 +91,22 @@ cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, 
 cell coord st' = do
   st <- holdUniqDyn st'
 
-  e <- dyn . ffor st $ \status -> mdo
-    let (visibility, innerStatus) = status
-        dataStatus = case innerStatus of
-          Bomb -> mempty
-          SafeArea i -> "data-number" =: Text.pack (show i)
-        clsVisibility = case visibility of 
-          Hidden NotFlagged -> "hidden unknown"
-          Hidden Flagged -> "hidden flagged"
-          Visible -> "visible"
-        clsContent = case innerStatus of
-          Bomb -> "bomb"
-          SafeArea _ -> "safe"
-    (td, _) <- elClass' "td" (clsVisibility <> " " <> clsContent) $ elAttr "span" dataStatus $ blank
-    longClick <- longClickEvent td
-    let actionEvt = click2Action <$> longClick
-    pure ((coord,) <$> actionEvt)
-  switchHold never e
+  let (tdClass, spanAttr) = splitDynPure $ ffor st $ \case
+        (visibility, innerStatus) -> (clsVisibility <> " " <> clsContent, dataStatus)
+          where
+            (dataStatus, clsContent) = case innerStatus of
+              Bomb -> (mempty, "bomb")
+              SafeArea i -> ("data-number" =: Text.pack (show i), "safe")
+            clsVisibility = case visibility of
+              Hidden NotFlagged -> "hidden unknown"
+              Hidden Flagged -> "hidden flagged"
+              Visible -> "visible"
+
+  (td, _) <- elDynClass' "td" tdClass $ elDynAttr "span" (spanAttr) $ blank
+  longClick <- longClickEvent td
+  let actionEvt = click2Action <$> longClick
+
+  pure ((coord,) <$> actionEvt)
 
 click2Action :: ClickType -> MineAction
 click2Action LongClick = Flag
