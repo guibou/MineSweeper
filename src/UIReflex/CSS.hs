@@ -61,7 +61,6 @@ css = (encodeUtf8 . toStrict . render) $ do
       "height" -: "calc(0.99 * (100vh - var(--headerSize)) / var(--gridSizeH))"
       fontFamily [] [monospace]
       borderWidth (vmin 0.1)
-      "font-height" -: "1vmin"
       borderStyle solid
       borderColor grey
       backgroundColor lightgrey
