@@ -30,9 +30,6 @@ css = (encodeUtf8 . toStrict . render) $ do
     ".mineCount" ? do
       fontColor red
     ".timer" ? do
-      animationName "expand"
-      animationDuration (sec 0.5)
-
       keyframes "expand" [(0, Clay.opacity 0)]
 
   -- custom override for all winners
@@ -70,9 +67,6 @@ css = (encodeUtf8 . toStrict . render) $ do
       backgroundColor lightgrey
       textAlign center
       verticalAlign middle
-
-      animationName "expand"
-      animationDuration (sec 0.5)
 
       keyframes "expand" [(0, Clay.opacity 0)]
 
