@@ -88,7 +88,7 @@ data CaseContent
 -- | State of the current game
 data GameResult
   = Done WinLose -- ^ This game is done
-  | Playing Int -- ^ Still playing and there is N non-flagged flags
+  | Playing -- ^ Still playing
   deriving (Show)
 
 -- | State of a terminated game
@@ -114,13 +114,10 @@ gameResult :: GameState -> GameResult
 gameResult (GameState visibility (Field _ mines))
   | not (null (mines `Set.difference` (Map.keysSet visibility))) = Done Lose -- A mine is visible
   | nbHidden == nbMines = Done Win -- all mines are hidden / flagged
-  | otherwise = Playing (nbMines - nbFlags) -- the number of non-flagged mines
+  | otherwise = Playing
   where
     nbMines = Set.size mines
     nbHidden = Map.size visibility
-
-    -- TODO: O(n) for a status, that's a bit too much!
-    nbFlags = length (filter (==Flagged) (Map.elems visibility))
 
 -- | Create a new game
 newGame

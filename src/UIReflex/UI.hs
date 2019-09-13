@@ -86,7 +86,7 @@ click2Action ShortClick = Reveal
 clsStatus :: GameResult -> Text
 clsStatus (Done Win) = "win"
 clsStatus (Done Lose) = "lose"
-clsStatus (Playing _) = "playing"
+clsStatus Playing = "playing"
 
 mineSweeperWidget :: MonadWidget t m => Size -> Dynamic t GameState -> m (Event t (Coord, MineAction))
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
