@@ -3,7 +3,7 @@ This is a mine sweeper in Haskell Reflex
 ## JSaddle work (fast iterations)
 
 ```shell
-nix-shell -A shells.ghc8_2_1
+nix-shell
 
 cabal new-repl
 >>> go
@@ -14,7 +14,7 @@ cabal new-repl
 ## Android application
 
 ```shell
-nix-build -A android.frontend
+nix-build -A android.MineSweeper
 ```
 
 You will get your APK inside `result`.
