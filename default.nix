@@ -1,4 +1,17 @@
-(import ./reflex.nix).project ({ pkgs, ... }: {
+(import ./reflex.nix {
+  config .android_sdk.accept_license = true;
+  config.allowBroken = true;
+
+  haskellOverlays = [(
+    selfPkgs: superPkgs:
+    let
+      pkgs = superPkgs.callPackage ({ pkgs }: pkgs) {};
+    in
+      {
+      clay = pkgs.haskell.lib.doJailbreak superPkgs.clay;
+    }
+  )];
+}).project ({ pkgs, ... }: {
   useWarp = true;
   packages = {
     MineSweeper = ./.;
@@ -6,8 +19,6 @@
 
   shells = {
     ghc = ["MineSweeper"];
-    ghc8_2_1 = ["MineSweeper"];
-    ghcjs = ["MineSweeper"];
   };
 
   android.MineSweeper = {

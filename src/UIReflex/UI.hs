@@ -19,7 +19,6 @@ import Data.Traversable (for)
 import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
-import Data.Semigroup
 
 
 import qualified Data.Text as Text
