@@ -26,17 +26,9 @@ css = (encodeUtf8 . toStrict . render) $ do
     borderWidth (px 0)
     "--gridSizeW" -: "17"
     "--gridSizeH" -: "9"
-    "--headerSize" -: "0vh"
 
   body ? do
     margin (pct 0) 0 0 0
-
-  ".header" ? do
-    display flex
-    "height" -: "var(--headerSize)"
-
-    ".mineCount" ? do
-      fontColor red
 
   -- custom override for all winners
   ".win" ? ".grid" ? do

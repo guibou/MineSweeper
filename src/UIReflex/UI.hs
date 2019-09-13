@@ -6,7 +6,7 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module UIReflex.UI where
+module UIReflex.UI (go) where
 
 import MineSweeper
 import UIReflex.CSS
@@ -20,43 +20,10 @@ import Data.Text (Text)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 
-
 import qualified Data.Text as Text
-
-
-number :: Show a => a -> Text
-number i = Text.pack $ show i
-
-toSec :: GameStatus -> UTCTime -> Text
-toSec (Terminated t) _ = Text.pack (show @Int (truncate t))
-toSec NotRunning _now = "-"
-toSec (Running started) now = Text.pack (show @Int (truncate $ now `diffUTCTime` started))
-
-data GameStatus = NotRunning
-                | Running UTCTime
-                | Terminated NominalDiffTime
-                deriving (Show)
-
-startOrTerminateGame :: (UTCTime, GameState) -> GameStatus -> GameStatus
-startOrTerminateGame (now, _) NotRunning = Running now
-startOrTerminateGame (now, g) (Running t) = case gameResult g of
-  Done _ -> Terminated (now `diffUTCTime` t)
-  _ -> Running t
-startOrTerminateGame _ r = r
 
 newGameRandom :: Size -> Int -> UTCTime -> GameState
 newGameRandom size nbMines time = newGame (truncate $ utcTimeToPOSIXSeconds time) size nbMines
-
-header :: MonadWidget t m => Dynamic t GameState -> Dynamic t GameStatus -> Dynamic t UTCTime -> m (Event t ())
-header fs gameStatus timer = do
-  divClass "header" $ do
-    restartEvt <- elClass "span" "restart" $ button "Restart"
-    divClass "timer" $ text "Time: " >> dynText (toSec <$> gameStatus <*> timer)
-    divClass "mineCount" $ text "Mines: " >> text "20"
-
-    text "Status: " >> display (gameResult <$> fs)
-
-    pure restartEvt
 
 endGameBanner :: MonadWidget t m => m (Event t ())
 endGameBanner = do
@@ -76,15 +43,6 @@ go = mainWidgetWithCss css $ mdo
         randomGame = newGameRandom size nbMines now
 
     now <- liftIO getCurrentTime
-    {-
-    gameStatus <- foldDyn ($) NotRunning (leftmost
-                                         [
-                                           startOrTerminateGame <$> ((,) <$> current timer <@> (updated game)),
-                                           const NotRunning <$ restartEvt
-                                         ])
-
-    restartEvt <- header game gameStatus
-    -}
 
     restartEvt <- endGameBanner
 
@@ -100,7 +58,7 @@ go = mainWidgetWithCss css $ mdo
     pure game
   pure ()
 
-cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, MineAction))
+cell :: MonadWidget t m => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, MineAction))
 cell coord st' = do
   st <- holdUniqDyn st'
 
@@ -115,8 +73,8 @@ cell coord st' = do
               Hidden Flagged -> "hidden flagged"
               Visible -> "visible"
 
-  (cell, _) <- elDynClass' "div" cellClass $ elDynAttr "span" (spanAttr) $ blank
-  longClick <- longClickEvent cell
+  (cellEvent, _) <- elDynClass' "div" cellClass $ elDynAttr "span" (spanAttr) $ blank
+  longClick <- longClickEvent cellEvent
   let actionEvt = click2Action <$> longClick
 
   pure ((coord,) <$> actionEvt)
@@ -130,7 +88,7 @@ clsStatus (Done Win) = "win"
 clsStatus (Done Lose) = "lose"
 clsStatus (Playing _) = "playing"
 
-mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t (Coord, MineAction))
+mineSweeperWidget :: MonadWidget t m => Size -> Dynamic t GameState -> m (Event t (Coord, MineAction))
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
   divClass "grid" $ do
     for (allCells size) $ \line -> do

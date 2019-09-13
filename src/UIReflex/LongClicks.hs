@@ -49,7 +49,7 @@ m stat (t, e) = case (stat, e) of
                       if diff > 0.09
                       then ClickDetected LongClick
                       else ClickDetected ShortClick
-    
+
 tagTime :: b -> IO (UTCTime, b)
 tagTime e = do
   t <- getCurrentTime
