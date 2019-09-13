@@ -9,9 +9,17 @@ import Clay
 import Clay.Stylesheet
 
 import Data.ByteString (ByteString)
+import Clay.Media (screen)
+
 
 css :: ByteString
 css = (encodeUtf8 . toStrict . render) $ do
+  query screen [Feature "orientation" (Just "portrait")] $ do
+    ".grid" ? do
+      "grid-auto-flow" -: "column"
+      "grid-template-columns" -: "repeat(var(--gridSizeH), 1fr)"
+      "grid-template-rows" -: "repeat(var(--gridSizeW), 1fr)"
+
   star ? do
     padding (px 0) 0 0 0
     margin (px 0) 0 0 0
@@ -29,52 +37,51 @@ css = (encodeUtf8 . toStrict . render) $ do
 
     ".mineCount" ? do
       fontColor red
-    ".timer" ? do
-      keyframes "expand" [(0, Clay.opacity 0)]
 
   -- custom override for all winners
-  ".win" ? table ? do
+  ".win" ? ".grid" ? do
     padding auto auto auto auto
-    td # ".unknown" ? span # ":after" ? do -- not flagged bomb
+    div # ".unknown" ? span # ":after" ? do -- not flagged bomb
       content (stringContent "💣") -- No number, you are a bomb
 
   -- custom override for losers
-  ".lose" ? table ? do
-    td # ".flagged" ? do
+  ".lose" ? ".grid" ? do
+    div # ".flagged" ? do
       backgroundColor lightcoral -- wrong flag
 
-    td # ".visible.bomb" ? do
+    div # ".visible.bomb" ? do
       backgroundColor lightcoral -- visible bomb
     pure ()
 
-  table ? do
-    --borderCollapse collapse
-    borderSpacing (px 0)
-    borderWidth (px 0)
+  ".grid" ? do
+    width (vw 100)
+    height (vh 100)
+    display grid
+    "align-items" -: "stretch";
+    "grid-template-columns" -: "repeat(var(--gridSizeW), 1fr)"
+    "grid-template-rows" -: "repeat(var(--gridSizeH), 1fr)"
 
-    td # ".flagged" ? span # ":after" ? do
+    div # ".flagged" ? span # ":after" ? do
       content (stringContent "🚩")
 
-    td ? do
-      boxSizing borderBox
-      "width" -: "calc(100vw / var(--gridSizeW))"
-      "height" -: "calc(0.99 * (100vh - var(--headerSize)) / var(--gridSizeH))"
+    div ? do
       fontFamily [] [monospace]
       borderWidth (vmin 0.1)
       borderStyle solid
       borderColor grey
       backgroundColor lightgrey
+      display grid
+      "align-items" -: "center";
       textAlign center
-      verticalAlign middle
 
-      keyframes "expand" [(0, Clay.opacity 0)]
 
     ".hidden" ? do
       borderColor4 gainsboro dimgrey dimgrey gainsboro
       borderWidth (vmin 1.5)
-  ".playing" ? table ? td # ".visible" ? displays
-  ".win" ? table ? td # ".visible" ? displays
-  ".lose" ? table ? td ? displays
+
+  ".playing" ? ".grid" ? div # ".visible" ? displays
+  ".win" ? ".grid" ? div # ".visible" ? displays
+  ".lose" ? ".grid" ? div ? displays
 
   ".banner" ? do
     position fixed
@@ -85,7 +92,7 @@ css = (encodeUtf8 . toStrict . render) $ do
     borderWidth (px 1)
     display none
     fontSize (vh 10)
-    
+
   ".win" ? ".banner" ? do
     backgroundColor (setA 0.4 (toRgba lightgreen))
     borderColor green

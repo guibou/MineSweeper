@@ -63,7 +63,7 @@ endGameBanner :: MonadWidget t m => m (Event t ())
 endGameBanner = do
   (dom, _) <- elClass' "div" "banner" $ do
     text "click to restart"
-  
+
   pure $ domEvent Click dom
 
 go :: IO ()
@@ -88,7 +88,7 @@ go = mainWidgetWithCss css $ mdo
     -}
 
     restartEvt <- endGameBanner
-    
+
     currentRestartTime <- performEvent ((\_ -> liftIO getCurrentTime) <$> restartEvt)
     let newGameEvent = newGameRandom size nbMines <$> currentRestartTime
 
@@ -105,7 +105,7 @@ cell :: _ => Coord -> Dynamic t (Visibility, CaseContent) -> m (Event t (Coord, 
 cell coord st' = do
   st <- holdUniqDyn st'
 
-  let (tdClass, spanAttr) = splitDynPure $ ffor st $ \case
+  let (cellClass, spanAttr) = splitDynPure $ ffor st $ \case
         (visibility, innerStatus) -> (clsVisibility <> " " <> clsContent, dataStatus)
           where
             (dataStatus, clsContent) = case innerStatus of
@@ -116,8 +116,8 @@ cell coord st' = do
               Hidden Flagged -> "hidden flagged"
               Visible -> "visible"
 
-  (td, _) <- elDynClass' "td" tdClass $ elDynAttr "span" (spanAttr) $ blank
-  longClick <- longClickEvent td
+  (cell, _) <- elDynClass' "div" cellClass $ elDynAttr "span" (spanAttr) $ blank
+  longClick <- longClickEvent cell
   let actionEvt = click2Action <$> longClick
 
   pure ((coord,) <$> actionEvt)
@@ -133,8 +133,7 @@ clsStatus (Playing _) = "playing"
 
 mineSweeperWidget :: _ => Size -> Dynamic t GameState -> m (Event t (Coord, MineAction))
 mineSweeperWidget size fieldDyn = leftmost . mconcat <$> do
-  el "table" $ do
+  divClass "grid" $ do
     for (allCells size) $ \line -> do
-      el "tr" $ do
         for line $ \coord -> do
           cell coord (caseStatus coord <$> fieldDyn)
