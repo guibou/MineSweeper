@@ -76,7 +76,11 @@ data Flagged = NotFlagged | Flagged
   deriving (Show, Eq)
 
 -- | Opaque type. Stores a Mine game
-data GameState = GameState (Map Coord Flagged) Field
+data GameState
+  = NotStarted Int Size Int
+  -- ^ Game is not started. Number of mines, size, seed
+  | GameState (Map Coord Flagged) Field
+  -- ^ Game is running
   deriving Show
 
 -- | What's inside a case
@@ -111,6 +115,7 @@ data MineAction
 
 -- | Tells if we are still playing or if the game is done
 gameResult :: GameState -> GameResult
+gameResult (NotStarted _ _ _) = Playing
 gameResult (GameState visibility (Field _ mines))
   | not (null (mines `Set.difference` (Map.keysSet visibility))) = Done Lose -- A mine is visible
   | nbHidden == nbMines = Done Win -- all mines are hidden / flagged
@@ -119,13 +124,22 @@ gameResult (GameState visibility (Field _ mines))
     nbMines = Set.size mines
     nbHidden = Map.size visibility
 
--- | Create a new game
+-- | Lazyly initialize a new game
 newGame
   :: Int -- ^ Random seed
   -> Size -- ^ New size
   -> Int -- ^ Number of mines
   -> GameState
-newGame seed size mineCount = GameState popMap . Field size $ randomPickN pop mineCount (mkStdGen seed)
+newGame seed size mineCount = NotStarted mineCount size seed
+
+-- | Create a new game
+generateGame
+  :: Int -- ^ Random seed
+  -> Size -- ^ New size
+  -> Int -- ^ Number of mines
+  -> Coord -- ^ Starting case
+  -> GameState
+generateGame seed size mineCount coord = GameState popMap . Field size $ randomPickN (Set.delete coord pop) mineCount (mkStdGen seed)
   where
     pop = universe size
     popMap = Map.fromSet (const NotFlagged) pop
@@ -133,9 +147,11 @@ newGame seed size mineCount = GameState popMap . Field size $ randomPickN pop mi
 -- | Returns the 'Size' of the game
 fieldSize :: GameState -> Size
 fieldSize (GameState _ (Field size _)) = size
+fieldSize (NotStarted _ size _) = size
 
 -- | Returns what's inside the case and what the player can see
 caseStatus :: Coord -> GameState -> (Visibility, CaseContent)
+caseStatus _ (NotStarted _ _ _) = (Hidden NotFlagged, Bomb) -- Here bomb is wrong, the game is not yet initialised
 caseStatus c (GameState visibility f) = (modifier, getStatus c f)
   where
     modifier = maybe Visible Hidden (Map.lookup c visibility)
@@ -156,6 +172,9 @@ play
   -> Coord
   -> GameState
   -> GameState
+play action c game@(NotStarted nbMines size seed) = case action of
+  Flag -> game
+  Reveal -> play action c (generateGame seed size nbMines c)
 play action c fs@(GameState visibility field)
   | Done _ <- gameResult fs = fs -- Game is done, nothing to do
   | otherwise = case action of
