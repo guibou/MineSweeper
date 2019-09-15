@@ -10,7 +10,6 @@ module UIReflex.UI (go) where
 
 import MineSweeper
 import UIReflex.CSS
-import UIReflex.LongClicks
 
 import Control.Monad.IO.Class
 import Reflex.Dom
@@ -74,14 +73,14 @@ cell coord st' = do
               Visible -> "visible"
 
   (cellEvent, _) <- elDynClass' "div" cellClass $ elDynAttr "span" (spanAttr) $ blank
-  longClick <- longClickEvent cellEvent
-  let actionEvt = click2Action <$> longClick
+
+  let
+    actionEvt = leftmost [
+      Reveal <$ domEvent Dblclick cellEvent
+      , Flag <$ domEvent Click cellEvent
+      ]
 
   pure ((coord,) <$> actionEvt)
-
-click2Action :: ClickType -> MineAction
-click2Action LongClick = Flag
-click2Action ShortClick = Reveal
 
 clsStatus :: GameResult -> Text
 clsStatus (Done Win) = "win"
